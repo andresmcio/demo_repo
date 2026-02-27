@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    
+    environment {
+        SCANOSS_API_KEY = credentials('scanoss-api-key')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('SCANOSS Audit') {
+            steps {
+                echo '🕵️ RunningProject's  DNA Scan...'
+                
+                sh 'scanoss-py scan . --format cyclonedx -o sbom.json'
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                
+                script {
+                    def scanResults = readJSON file: 'sbom.json'
+                    echo "Found ${scanResults.components.size()} components in SBOM."
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo '🏗️ Building the project...'
+                sh 'gcc src/main.c -o demo_repo'
+            }
+        }
+    }
+    
+    post {
+        always {
+            archiveArtifacts artifacts: 'sbom.json', fingerprint: true
+            echo '✅ Scan complete. Artifacts archived.'
+        }
+    }
+}

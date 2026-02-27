@@ -1,0 +1,15 @@
+.DS_Store
+.env
+
+# SCANOSS specific
+.scanoss/
+scanoss.json
+scanoss-config.json
+*.log
+
+# Dev Environment
+
+testenv/
+__pycache__/
+instructions.md
+demo-notes.md
