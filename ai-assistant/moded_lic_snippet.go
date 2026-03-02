@@ -9,7 +9,7 @@ import (
 )
 
 // ListRepository - Generic.
-// This is not derived from any copyleft code.
+// This is not derived from any copyleft code or is it?
 type ListRepository struct {
 	data interface{}
 }
