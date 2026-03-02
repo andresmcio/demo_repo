@@ -1,0 +1,31 @@
+name: SCANOSS Code Scan
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+  actions: read
+
+jobs:
+  scanoss-analysis:
+    name: SCANOSS Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run SCANOSS scan
+        id: scanoss-code-scan-step
+        uses: scanoss/code-scan-action@v1
+        with:
+          policies: undeclared
+          api.key: ${{ secrets.SCANOSS_API_KEY }}
