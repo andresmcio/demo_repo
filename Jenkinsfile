@@ -15,31 +15,31 @@ pipeline {
     }
 
     stages {
-        stage('SCANOSS Execution') {
+        stage('SCANOSS Analysis') {
             agent {
                 docker {
                     image params.SCANOSS_CLI_DOCKER_IMAGE
-                    // Forzamos arquitectura ARM64 para tu M1 Pro y usuario root para evitar líos de permisos
-                    args '-u 0:0 --platform linux/arm64'
+                    // QUITAMOS el -u 1000:1000 y el -u 0:0 manual. 
+                    // Dejamos solo la plataforma y que Jenkins maneje el usuario.
+                    args '--platform linux/arm64' 
                     reuseNode true
                 }
             }
             steps {
                script {
-                   echo "--- Iniciando Escaneo SCANOSS ---"
-                   
+                   echo "--- Probando conexión dentro del contenedor ---"
+                   // Verificamos que el binario de scanoss responda
+                   sh "scanoss-py --version"
+
                    // Ejecución del escaneo
-                   scan()
+                   sh "scanoss-py scan . --apiurl ${params.SCANOSS_API_URL} --output results.json"
 
-                   // Generación de SARIF para los gráficos
-                   sh "scanoss-py convert --input ${env.SCANOSS_RESULTS_JSON} --format sarif --output ${env.SCANOSS_SARIF}"
+                   // Conversión a SARIF
+                   sh "scanoss-py convert --input results.json --format sarif --output results.sarif"
                    
-                   // Guardar artefactos
-                   archiveArtifacts artifacts: "${env.SCANOSS_RESULTS_JSON}, ${env.SCANOSS_SARIF}", allowEmptyArchive: true
-
-                   // Renderizar los gráficos de Warnings Next Gen
+                   // Publicar gráficos
                    recordIssues(
-                       tools: [sarif(pattern: env.SCANOSS_SARIF, id: 'scanoss', name: 'SCANOSS SBOM Analysis')],
+                       tools: [sarif(pattern: 'results.sarif', id: 'scanoss', name: 'SCANOSS Analysis')],
                        qualityGates: [[threshold: 1, type: 'TOTAL', criticality: 'UNSTABLE']]
                    )
                 }
