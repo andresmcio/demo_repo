@@ -1,37 +1,33 @@
 pipeline {
     agent any 
 
-    parameters {
-        string(name: 'SCANOSS_API_TOKEN_ID', defaultValue:"scanoss-token", description: 'scanoss-token')
-        string(name: 'SCANOSS_CLI_DOCKER_IMAGE', defaultValue:"ghcr.io/scanoss/scanoss-py-jenkins:v1.46.0", description: 'Imagen de SCANOSS')
-        string(name: 'SCANOSS_API_URL', defaultValue:"https://api.osskb.org/scan/direct", description: 'https://api.scanoss.com')
-    }
-
-    environment {
-        
-        RESULTS_JSON = "results.json"
-        RESULTS_SARIF = "results.sarif"
-    }
-
     stages {
-        stage('SCANOSS Scan & Graph') {
+        stage('SCANOSS Analysis') {
+            agent {
+                docker {
+                    
+                    image 'python:3.9-slim'
+                    args '--platform linux/arm64'
+                }
+            }
             steps {
                 script {
-                    withCredentials([string(credentialsId: params.SCANOSS_API_TOKEN_ID, variable: 'SCANOSS_API_TOKEN')]) {
-                        echo "--- Running container manually ---"
+                    echo "--- Instalando SCANOSS nativamente en el contenedor ARM ---"
+                    
+                    sh "pip install scanoss"
+
+                    withCredentials([string(credentialsId: 'scanoss-token', variable: 'TOKEN')]) {
+                        echo "--- Executing Scan ---"
+                        sh "scanoss-py scan . --apiurl https://api.scanoss.com --key ${TOKEN} --output results.json"
                         
-                        
-                        sh "scanoss-py scan . --apiurl ${params.SCANOSS_API_URL} --key ${SCANOSS_API_TOKEN} --output results.json"
+                        echo "--- Converting SARIF ---"
+                        sh "scanoss-py convert --input results.json --format sarif --output results.sarif"
                     }
 
-                    echo "--- Generating graphs Jenkins ---"
-                    
+                    // Graphs
                     recordIssues(
-                        tools: [sarif(pattern: env.RESULTS_SARIF, id: 'scanoss', name: 'SCANOSS SBOM Analysis')],
-                        qualityGates: [[threshold: 1, type: 'TOTAL', criticality: 'UNSTABLE']]
+                        tools: [sarif(pattern: 'results.sarif', id: 'scanoss', name: 'SCANOSS Analysis')]
                     )
-                    
-                    archiveArtifacts artifacts: "*.json, *.sarif", allowEmptyArchive: true
                 }
             }
         }
