@@ -21,15 +21,7 @@ pipeline {
                         echo "--- Running container manually ---"
                         
                         
-                        sh """
-                        docker run --rm --platform linux/arm64 \
-                        -v ${WORKSPACE}:/scan \
-                        -w /scan \
-                        -e SCANOSS_API_TOKEN=${SCANOSS_API_TOKEN} \
-                        ${params.SCANOSS_CLI_DOCKER_IMAGE} \
-                        /bin/sh -c "scanoss-py scan . --apiurl ${params.SCANOSS_API_URL} --key ${SCANOSS_API_TOKEN} --output ${env.RESULTS_JSON} && \
-                                    scanoss-py convert --input ${env.RESULTS_JSON} --format sarif --output ${env.RESULTS_SARIF}"
-                        """
+                        sh "scanoss-py scan . --apiurl ${params.SCANOSS_API_URL} --key ${SCANOSS_API_TOKEN} --output results.json"
                     }
 
                     echo "--- Generating graphs Jenkins ---"
